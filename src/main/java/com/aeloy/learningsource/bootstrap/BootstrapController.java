@@ -16,7 +16,8 @@ public class BootstrapController {
 
     @PostMapping
     public void init() {
-        databaseBootstrap.createTableIfNeeded();
+        databaseBootstrap.createTableIfNotAvailable();
+        databaseBootstrap.createGlobalSecondaryIndexIfNotAvailable();
     }
 
 }
