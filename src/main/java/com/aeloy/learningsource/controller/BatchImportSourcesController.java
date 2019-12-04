@@ -4,6 +4,7 @@ import com.aeloy.learningsource.model.LearningSource;
 import com.aeloy.learningsource.model.LearningSources;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,7 +21,7 @@ public class BatchImportSourcesController {
     }
 
     @PostMapping
-    public ResponseEntity<Void> importLearningSources(List<LearningSource> sources) {
+    public ResponseEntity<Void> importLearningSources(@RequestBody List<LearningSource> sources) {
         learningSources.saveBatchItems(sources);
         return ResponseEntity.noContent().build();
     }

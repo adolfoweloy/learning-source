@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
-public class LowLevelAPILearningSources implements LearningSources {
+class LowLevelAPILearningSources implements LearningSources {
     private static final Logger logger = LoggerFactory.getLogger(LowLevelAPILearningSources.class);
     private final AmazonDynamoDB amazonDynamoDB;
 
