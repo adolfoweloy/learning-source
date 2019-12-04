@@ -16,7 +16,7 @@ public class BootstrapController {
 
     @PostMapping
     public void init() {
-        databaseBootstrap.createTable();
+        databaseBootstrap.createTableIfNeeded();
     }
 
 }

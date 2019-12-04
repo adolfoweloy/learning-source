@@ -8,12 +8,15 @@ import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import org.springframework.stereotype.Component;
 
 @Component
 class DatabaseBootstrap {
+    private static final long RCU = 5;
+    private static final long WCU = 5;
 
     private final AmazonDynamoDB amazonDynamoDB;
 
@@ -21,25 +24,31 @@ class DatabaseBootstrap {
         this.amazonDynamoDB = amazonDynamoDB;
     }
 
-    void createTable() {
-        CreateTableRequest createTableRequest = new CreateTableRequest();
-        CreateTableResult table = amazonDynamoDB.createTable(
-                createTableRequest
-                        .withTableName("LearningSource")
-                        .withKeySchema(
-                                new KeySchemaElement("hash", KeyType.HASH),
-                                new KeySchemaElement("registryDate", KeyType.RANGE))
-                        .withAttributeDefinitions(
-                                new AttributeDefinition("hash", ScalarAttributeType.S),
-                                new AttributeDefinition("registryDate", ScalarAttributeType.S)
-                        )
-                        .withBillingMode(BillingMode.PROVISIONED)
-                        .withProvisionedThroughput(
-                                new ProvisionedThroughput()
-                                        .withReadCapacityUnits(5l)
-                                        .withWriteCapacityUnits(5l))
-        );
-        waitUntilActive(table.getTableDescription());
+    void createTableIfNeeded() {
+        LearningSourceTable tableDefinition = LearningSourceTable.instance();
+
+        try {
+            amazonDynamoDB.describeTable(tableDefinition.getTableName());
+        } catch (ResourceNotFoundException e) {
+            CreateTableRequest createTableRequest = new CreateTableRequest();
+            CreateTableResult table = amazonDynamoDB.createTable(
+                    createTableRequest
+                            .withTableName(tableDefinition.getTableName())
+                            .withKeySchema(
+                                    new KeySchemaElement(tableDefinition.getPartitionKey(), KeyType.HASH),
+                                    new KeySchemaElement(tableDefinition.getSortKey(), KeyType.RANGE))
+                            .withAttributeDefinitions(
+                                    new AttributeDefinition(tableDefinition.getPartitionKey(), ScalarAttributeType.S),
+                                    new AttributeDefinition(tableDefinition.getSortKey(), ScalarAttributeType.S)
+                            )
+                            .withBillingMode(BillingMode.PROVISIONED)
+                            .withProvisionedThroughput(
+                                    new ProvisionedThroughput()
+                                            .withReadCapacityUnits(RCU)
+                                            .withWriteCapacityUnits(WCU))
+            );
+            waitUntilActive(table.getTableDescription());
+        }
     }
 
     private void waitUntilActive(TableDescription tableDescription) {
