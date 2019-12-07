@@ -3,8 +3,11 @@ package com.aeloy.learningsource.model;
 import com.aeloy.learningsource.bootstrap.LearningSourceTable;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.BatchWriteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchWriteItemResult;
 import com.amazonaws.services.dynamodbv2.model.PutRequest;
+import com.amazonaws.services.dynamodbv2.model.ReturnConsumedCapacity;
+import com.amazonaws.services.dynamodbv2.model.ReturnItemCollectionMetrics;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
@@ -28,10 +31,24 @@ class LowLevelAPILearningSources implements LearningSources {
     @Override
     @Async
     public void saveBatchItems(List<LearningSource> sources) {
-        try {
-            BatchWriteItemResult result = amazonDynamoDB.batchWriteItem(ImmutableMap.of(
+        // creating the request so the consumed capacity and metrics about size can be retrieved.
+        BatchWriteItemRequest request = new BatchWriteItemRequest(
+                ImmutableMap.of(
                     LearningSourceTable.instance().getTableName(),
-                    getListOfWrites(sources)));
+                    getListOfWrites(sources)))
+                .withReturnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
+                .withReturnItemCollectionMetrics(ReturnItemCollectionMetrics.SIZE);
+
+        try {
+            BatchWriteItemResult result = amazonDynamoDB.batchWriteItem(request);
+            result.getConsumedCapacity()
+                    .forEach(item -> {
+                        logger.info("consumed {} total capacity", item.getCapacityUnits());
+                        logger.info("consumed {} RCUs", item.getReadCapacityUnits());
+                        logger.info("consumed {} for GSI", item.getGlobalSecondaryIndexes().size());
+                    });
+
+            // in case of unprocessed items, it should retry.
             logger.info("{} out of {} processed", result.getUnprocessedItems().size(), sources.size());
         } catch (Exception e) {
             logger.error("Error processing batch writes.", e);
